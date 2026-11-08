@@ -1,0 +1,47 @@
+# Student Skill Intelligence Platform (SSIP) — Local Development Environment
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ssip-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ssip_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ssip_secret_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-ssip_db}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - ssip_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ssip_user} -d ${POSTGRES_DB:-ssip_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ssip-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: ssip-redis
+    restart: unless-stopped
+    # Boundary 2: Disable RDB snapshotting and AOF persistence to enforce zero-retention on assessment cache
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "512mb", "--maxmemory-policy", "volatile-ttl"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ssip-network
+
+volumes:
+  ssip_postgres_data:
+    name: ssip_postgres_data
+
+networks:
+  ssip-network:
+    name: ssip-network
+    driver: bridge
+
