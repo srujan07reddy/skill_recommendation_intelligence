@@ -23,6 +23,7 @@ import { ExportCenterView } from '../../features/exports/ExportCenterView';
 import { DepartmentManagementPage } from '../../features/admin/DepartmentManagementPage';
 import { SkillTaxonomyPage } from '../../features/admin/SkillTaxonomyPage';
 import { OperationalMonitoringPage } from '../../features/admin/OperationalMonitoringPage';
+import { FloatingNavAssistant } from '../navigation/FloatingNavAssistant';
 
 export function AppShell() {
   const { user, token, isLoading, initialize } = useAuthStore();
@@ -289,6 +290,17 @@ export function AppShell() {
           </div>
         </main>
       </div>
+
+      {/* Floating Feature & Navigation Assistant */}
+      <FloatingNavAssistant
+        currentTab={currentTab}
+        onNavigate={(tab) => {
+          setCurrentTab(tab);
+          if (tab === 'ingestion') {
+            setIngestionStep('sessions');
+          }
+        }}
+      />
     </div>
   );
 }
