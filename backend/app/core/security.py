@@ -36,11 +36,13 @@ def create_access_token(
     full_name: str,
     roles: List[str],
     department_id: Optional[str] = None,
+    school_id: Optional[str] = None,
+    school_code: Optional[str] = None,
     must_change_password: bool = False,
     expires_delta: Optional[timedelta] = None,
 ) -> str:
     """
-    Generate a signed JWT token containing user identity and role claims.
+    Generate a signed JWT token containing user identity, role, and institutional scope claims.
     ACCESS_CONTROL.md §4.1
     """
     if expires_delta:
@@ -54,6 +56,8 @@ def create_access_token(
         "full_name": full_name,
         "roles": roles,
         "department_id": str(department_id) if department_id else None,
+        "school_id": str(school_id) if school_id else None,
+        "school_code": school_code,
         "must_change_password": must_change_password,
         "exp": expire,
         "iat": datetime.now(timezone.utc),

@@ -20,15 +20,17 @@ class BenchmarkService:
     async def list_benchmarks(
         db: AsyncSession,
         department_id: Optional[str] = None,
+        school_id: Optional[str] = None,
         status: Optional[str] = None,
     ) -> List[DepartmentSkillMapping]:
         """
-        Retrieves curriculum benchmarks, optionally filtered by department and status.
+        Retrieves curriculum benchmarks, optionally filtered by department, school, and status.
         """
         stmt = (
             select(DepartmentSkillMapping)
             .options(
                 selectinload(DepartmentSkillMapping.skill),
+                selectinload(DepartmentSkillMapping.department),
             )
             .order_by(DepartmentSkillMapping.created_at)
         )
@@ -41,6 +43,15 @@ class BenchmarkService:
                 # Search by department_code
                 sub = select(Department.department_id).where(Department.department_code == department_id)
                 stmt = stmt.where(DepartmentSkillMapping.department_id.in_(sub))
+
+        if school_id:
+            try:
+                sch_uuid = uuid.UUID(school_id)
+                sub_sch = select(Department.department_id).where(Department.school_id == sch_uuid)
+                stmt = stmt.where(DepartmentSkillMapping.department_id.in_(sub_sch))
+            except (ValueError, TypeError):
+                sub_sch = select(Department.department_id).join(Department.school).where(School.school_code == school_id)
+                stmt = stmt.where(DepartmentSkillMapping.department_id.in_(sub_sch))
 
         if status:
             stmt = stmt.where(DepartmentSkillMapping.status == status.upper())

@@ -118,8 +118,9 @@ export interface BenchmarkResponse {
 }
 
 export const analysisApi = {
-  getInstitutionalDistribution: async (sessionId: string): Promise<InstitutionalSkillAnalytics> => {
-    const res = await apiClient.get<InstitutionalSkillAnalytics>(`/analysis/${sessionId}/distribution`);
+  getInstitutionalDistribution: async (sessionId: string, schoolId?: string): Promise<InstitutionalSkillAnalytics> => {
+    const params = schoolId ? { school_id: schoolId } : {};
+    const res = await apiClient.get<InstitutionalSkillAnalytics>(`/analysis/${sessionId}/distribution`, { params });
     return res.data;
   },
 

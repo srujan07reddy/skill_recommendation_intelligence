@@ -41,10 +41,20 @@ async def _build_user_summary(user: User, db: AsyncSession) -> UserSummaryRespon
     role_names: List[str] = [ur.role.role_name for ur in user_roles if ur.role]
     department_id = None
     department_name = None
+    school_id = None
+    school_code = None
     school_name = None
 
-    # Check for department scope from assigned roles
+    # Check for school or department scope from assigned roles
     for ur in user_roles:
+        if ur.school_id:
+            school_id = ur.school_id
+            sch_res = await db.execute(select(School).where(School.school_id == ur.school_id))
+            sch = sch_res.scalar_one_or_none()
+            if sch:
+                school_code = sch.school_code
+                school_name = sch.school_name
+
         if ur.department_id:
             department_id = ur.department_id
             dept_query = select(Department).where(Department.department_id == ur.department_id).options(selectinload(Department.school))
@@ -53,8 +63,10 @@ async def _build_user_summary(user: User, db: AsyncSession) -> UserSummaryRespon
             if dept:
                 department_name = dept.department_name
                 if dept.school:
-                    school_name = dept.school.school_name
-            break
+                    if not school_id:
+                        school_id = dept.school.school_id
+                        school_code = dept.school.school_code
+                        school_name = dept.school.school_name
 
     return UserSummaryResponse(
         user_id=user.user_id,
@@ -64,6 +76,8 @@ async def _build_user_summary(user: User, db: AsyncSession) -> UserSummaryRespon
         roles=role_names,
         department_id=department_id,
         department_name=department_name,
+        school_id=school_id,
+        school_code=school_code,
         school_name=school_name,
         must_change_password=user.must_change_password
     )
@@ -98,6 +112,8 @@ async def login(credentials: LoginRequest, db: AsyncSession = Depends(get_db)) -
         full_name=user.full_name,
         roles=summary.roles,
         department_id=str(summary.department_id) if summary.department_id else None,
+        school_id=str(summary.school_id) if summary.school_id else None,
+        school_code=summary.school_code,
         must_change_password=user.must_change_password
     )
 

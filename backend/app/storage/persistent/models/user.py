@@ -82,9 +82,11 @@ class UserRole(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(PortableUUID, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
     role_id: Mapped[uuid.UUID] = mapped_column(PortableUUID, ForeignKey("roles.role_id", ondelete="CASCADE"), nullable=False)
     department_id: Mapped[Optional[uuid.UUID]] = mapped_column(PortableUUID, ForeignKey("departments.department_id", ondelete="SET NULL"), nullable=True)
+    school_id: Mapped[Optional[uuid.UUID]] = mapped_column(PortableUUID, ForeignKey("schools.school_id", ondelete="SET NULL"), nullable=True)
     assigned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     user: Mapped["User"] = relationship("User", back_populates="user_roles")
     role: Mapped["Role"] = relationship("Role", back_populates="user_roles", lazy="joined")
+    school: Mapped[Optional["app.storage.persistent.models.academic.School"]] = relationship("app.storage.persistent.models.academic.School", lazy="joined")
 

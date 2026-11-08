@@ -20,14 +20,30 @@ router = APIRouter(prefix="/benchmarks", tags=["Curriculum Benchmarks (ADR-008)"
 @router.get("", response_model=List[BenchmarkResponse])
 async def list_benchmarks(
     department_id: Optional[str] = Query(None, description="Department UUID or code"),
+    school_id: Optional[str] = Query(None, description="Filter by school (Admin overall view)"),
     status: Optional[str] = Query(None, description="DRAFT, APPROVED, ARCHIVED"),
     current_token: Dict[str, Any] = Depends(require_roles(["Dean", "Administrator", "HOD", "Faculty"])),
     db: AsyncSession = Depends(get_db)
 ):
     """
     List curriculum benchmarks with their institutional approval status (ADR-008).
+    Dean is restricted to their assigned school; Admin can see all or filter by school.
     """
-    mappings = await BenchmarkService.list_benchmarks(db, department_id=department_id, status=status)
+    user_roles = [r.lower() for r in current_token.get("roles", [])]
+    user_school_id = current_token.get("school_id")
+
+    # If Dean, enforce their school's scope
+    if "dean" in user_roles and "administrator" not in user_roles and user_school_id:
+        effective_school_id = str(user_school_id)
+    else:
+        effective_school_id = school_id
+
+    mappings = await BenchmarkService.list_benchmarks(
+        db,
+        department_id=department_id,
+        school_id=effective_school_id,
+        status=status
+    )
     return [
         BenchmarkResponse(
             mapping_id=str(m.mapping_id),

@@ -307,3 +307,77 @@ async def purge_session(
         "message": "Session and all ephemeral assessment records and export packages physically erased across all boundaries."
     }
 
+
+@router.get("/{session_id}/records", summary="Get Individual Assessment Records")
+async def get_individual_assessment_records(
+    session_id: str,
+    department_code: Optional[str] = Query(None, description="Filter by department code"),
+    proficiency_level: Optional[str] = Query(None, description="Filter by proficiency (Beginner, Intermediate, Expert)"),
+    search: Optional[str] = Query(None, description="Search by student pseudonym or skill name"),
+    current_token: Dict[str, Any] = Depends(require_roles(["Dean", "Administrator", "HOD", "Faculty"])),
+    session_store: AbstractSessionStore = Depends(get_session_store),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Returns individual assessment records from the active session buffer with role-based scoping.
+    HOD: Restricted strictly to their department.
+    Dean: Restricted to departments belonging to their assigned school.
+    Administrator: Overall university view with cross-department and cross-school access.
+    """
+    session = await session_store.get_session(session_id)
+    if not session:
+        raise NotFoundException("Session not found.")
+
+    user_roles = [r.lower() for r in current_token.get("roles", [])]
+    user_school_id = current_token.get("school_id")
+    user_dept_id = current_token.get("department_id")
+
+    # Scope resolution:
+    allowed_dept_codes = None
+    from sqlalchemy import select
+    from app.storage.persistent.models.academic import Department
+
+    if "hod" in user_roles and "dean" not in user_roles and "administrator" not in user_roles:
+        if user_dept_id:
+            dept_res = await db.execute(select(Department.department_code).where(Department.department_id == user_dept_id))
+            hod_code = dept_res.scalar_one_or_none()
+            allowed_dept_codes = [hod_code] if hod_code else []
+    elif "dean" in user_roles and "administrator" not in user_roles and user_school_id:
+        dept_res = await db.execute(select(Department.department_code).where(Department.school_id == user_school_id))
+        allowed_dept_codes = [r[0] for r in dept_res.fetchall()]
+
+    all_records = await session_store.get_assessment_records(session_id)
+
+    # Filter by allowed departments
+    if allowed_dept_codes is not None:
+        records = [r for r in all_records if r.get("department_code") in allowed_dept_codes]
+    else:
+        records = all_records
+
+    # Filter by department_code parameter
+    if department_code:
+        records = [r for r in records if r.get("department_code", "").upper() == department_code.upper()]
+
+    # Filter by proficiency_level parameter
+    if proficiency_level:
+        records = [r for r in records if r.get("proficiency_level", "").upper() == proficiency_level.upper()]
+
+    # Filter by search string
+    if search:
+        s = search.lower().strip()
+        records = [
+            r for r in records
+            if s in r.get("session_student_ref", "").lower()
+            or s in r.get("skill_name", "").lower()
+            or s in r.get("department_code", "").lower()
+        ]
+
+    unique_students = len({r.get("session_student_ref") for r in records if r.get("session_student_ref")})
+
+    return {
+        "session_id": session_id,
+        "total_records": len(records),
+        "total_students": unique_students,
+        "records": records
+    }
+

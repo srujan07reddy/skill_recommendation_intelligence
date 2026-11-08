@@ -290,12 +290,13 @@ async def seed_data():
 
         print("--- [5/5] Seeding Initial Accounts (with must_change_password=True per ADR-003) ---")
         accounts = [
-            ("dean", "dean@jeppiaar.edu.in", "Dean of Academic Affairs", "DeanPassword123!", "Dean", None),
-            ("hod_cse", "hod_cse@jeppiaar.edu.in", "Head of Department (CSE)", "HodCsePassword123!", "HOD", departments["DEPT-CSE"].department_id),
-            ("admin", "admin@jeppiaar.edu.in", "System Administrator", "AdminPassword123!", "Administrator", None),
+            ("dean", "dean@jeppiaar.edu.in", "Dean of Engineering & Technology", "DeanPassword123!", "Dean", None, schools["SCH-SET"].school_id),
+            ("dean_ssahs", "dean_ssahs@jeppiaar.edu.in", "Dean of Sciences & Allied Health", "DeanPassword123!", "Dean", None, schools["SCH-SSAHS"].school_id),
+            ("hod_cse", "hod_cse@jeppiaar.edu.in", "Head of Department (CSE)", "HodCsePassword123!", "HOD", departments["DEPT-CSE"].department_id, schools["SCH-SET"].school_id),
+            ("admin", "admin@jeppiaar.edu.in", "System Administrator", "AdminPassword123!", "Administrator", None, None),
         ]
 
-        for uname, uemail, ufullname, upass, rname, udept_id in accounts:
+        for uname, uemail, ufullname, upass, rname, udept_id, uschool_id in accounts:
             stmt_u = select(User).where(User.username == uname)
             res_u = await session.execute(stmt_u)
             u = res_u.scalar_one_or_none()
@@ -318,16 +319,28 @@ async def seed_data():
                     user_id=u.user_id,
                     role_id=roles[rname].role_id,
                     department_id=udept_id,
+                    school_id=uschool_id,
                     is_active=True
                 )
                 session.add(ur)
+            else:
+                # Update existing UserRole with school_id
+                stmt_ur = select(UserRole).where(UserRole.user_id == u.user_id)
+                res_ur = await session.execute(stmt_ur)
+                existing_ur = res_ur.scalar_one_or_none()
+                if existing_ur:
+                    existing_ur.school_id = uschool_id
+                    if udept_id:
+                        existing_ur.department_id = udept_id
+                u.full_name = ufullname
 
         await session.commit()
         print("\nSeed successfully completed!")
         print("Initial Accounts Provisioned (all have must_change_password=True):")
-        print("  - Dean:          username='dean'    password='DeanPassword123!'")
-        print("  - HOD (CSE):     username='hod_cse' password='HodCsePassword123!'")
-        print("  - Administrator: username='admin'   password='AdminPassword123!'")
+        print("  - Dean (SET):    username='dean'       password='DeanPassword123!' (School of Engineering & Technology)")
+        print("  - Dean (SSAHS):  username='dean_ssahs' password='DeanPassword123!' (School of Sciences & Allied Health)")
+        print("  - HOD (CSE):     username='hod_cse'    password='HodCsePassword123!'")
+        print("  - Administrator: username='admin'      password='AdminPassword123!' (University-wide all schools)")
 
 
 if __name__ == "__main__":

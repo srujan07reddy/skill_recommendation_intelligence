@@ -12,7 +12,7 @@ from sqlalchemy.orm import selectinload
 from app.core.exceptions import NotFoundException, ForbiddenException, ValidationException
 from app.core.permissions import get_current_token_payload, require_roles
 from app.storage.persistent.database import get_db
-from app.storage.persistent.models.academic import Department
+from app.storage.persistent.models.academic import Department, School
 from app.storage.persistent.models.taxonomy import Skill, SkillCategory, SkillDomain, DepartmentSkillMapping
 from app.storage.session_factory import get_session_store
 from app.storage.interfaces.session_store import AbstractSessionStore
@@ -54,28 +54,57 @@ async def _load_taxonomy_details(db: AsyncSession) -> Dict[str, Dict[str, str]]:
 @router.get("/{session_id}/distribution", response_model=InstitutionalSkillAnalytics)
 async def get_institutional_distribution(
     session_id: str,
+    school_id: Optional[str] = Query(None, description="Filter by school ID or code"),
     current_token: Dict[str, Any] = Depends(require_roles(["Dean", "Administrator", "HOD", "Faculty", "IQAC"])),
     session_store: AbstractSessionStore = Depends(get_session_store),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Retrieve university-wide skill distributions, distinct student counts, and coverage percentages.
+    Retrieve skill distributions and coverage percentages.
+    Deans are scoped strictly to their assigned school.
+    Administrators have university-wide overall view with optional school filtering.
     """
     session = await session_store.get_session(session_id)
     if not session:
         raise NotFoundException(f"Assessment session '{session_id}' not found or expired.")
 
+    user_roles = [r.lower() for r in current_token.get("roles", [])]
+    user_school_id = current_token.get("school_id")
+
+    # Scope by school:
+    target_school_id = None
+    if "dean" in user_roles and "administrator" not in user_roles and user_school_id:
+        target_school_id = str(user_school_id)
+    elif school_id:
+        target_school_id = str(school_id)
+
     records = await session_store.get_assessment_records(session_id)
 
-    # Fetch active departments
-    dept_res = await db.execute(select(Department).where(Department.is_active == True))
+    # Fetch active departments (filtered by school if scoped)
+    dept_stmt = select(Department).where(Department.is_active == True)
+    if target_school_id:
+        import uuid
+        try:
+            sch_uuid = uuid.UUID(target_school_id)
+            dept_stmt = dept_stmt.where(Department.school_id == sch_uuid)
+        except Exception:
+            dept_stmt = dept_stmt.join(Department.school).where(School.school_code == target_school_id)
+
+    dept_res = await db.execute(dept_stmt)
+    matching_depts = dept_res.scalars().all()
+    allowed_codes = {d.department_code for d in matching_depts}
+
+    if target_school_id:
+        # Filter records to only those belonging to the target school's departments
+        records = [r for r in records if r.get("department_code") in allowed_codes]
+
     depts = [
         {
             "department_id": str(d.department_id),
             "department_code": d.department_code,
             "department_name": d.department_name,
         }
-        for d in dept_res.scalars().all()
+        for d in matching_depts
     ]
 
     taxonomy_details = await _load_taxonomy_details(db)

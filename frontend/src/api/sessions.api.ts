@@ -31,7 +31,34 @@ export interface SessionStatusResponse {
   expiry_time: string;
 }
 
+export interface IndividualAssessmentRecord {
+  session_student_ref: string;
+  department_code: string;
+  skill_name: string;
+  proficiency_level: string;
+  numeric_proficiency: number;
+  submitted_at: string;
+  source?: string;
+  program_code?: string;
+  evidence_description?: string;
+}
+
+export interface IndividualRecordsResponse {
+  session_id: string;
+  total_records: number;
+  total_students: number;
+  records: IndividualAssessmentRecord[];
+}
+
 export const sessionsApi = {
+  getIndividualRecords: async (
+    sessionId: string,
+    params?: { department_code?: string; proficiency_level?: string; search?: string }
+  ): Promise<IndividualRecordsResponse> => {
+    const res = await apiClient.get<IndividualRecordsResponse>(`/sessions/${sessionId}/records`, { params });
+    return res.data;
+  },
+
   createSession: async (data: SessionCreateRequest): Promise<SessionResponse> => {
     const res = await apiClient.post<SessionResponse>('/sessions', data);
     return res.data;

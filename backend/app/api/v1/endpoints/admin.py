@@ -33,7 +33,8 @@ async def list_academic_structure(
     current_token: Dict[str, Any] = Depends(require_roles(["Dean", "Administrator"])),
 ):
     """
-    Returns complete hierarchical academic structure: School -> Department -> Program.
+    Returns hierarchical academic structure: School -> Department -> Program.
+    Deans only see their assigned School; Administrators see all schools for overall view.
     """
     stmt = (
         select(School)
@@ -42,6 +43,17 @@ async def list_academic_structure(
         )
         .order_by(School.school_name)
     )
+
+    user_roles = [r.lower() for r in current_token.get("roles", [])]
+    user_school_id = current_token.get("school_id")
+    if "dean" in user_roles and "administrator" not in user_roles and user_school_id:
+        import uuid
+        try:
+            target_uuid = uuid.UUID(str(user_school_id))
+            stmt = stmt.where(School.school_id == target_uuid)
+        except Exception:
+            pass
+
     res = await db.execute(stmt)
     schools = res.scalars().all()
 

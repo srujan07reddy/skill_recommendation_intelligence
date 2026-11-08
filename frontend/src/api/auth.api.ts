@@ -8,6 +8,8 @@ export interface UserSummary {
   roles: string[];
   department_id?: string | null;
   department_name?: string | null;
+  school_id?: string | null;
+  school_code?: string | null;
   school_name?: string | null;
   must_change_password: boolean;
 }

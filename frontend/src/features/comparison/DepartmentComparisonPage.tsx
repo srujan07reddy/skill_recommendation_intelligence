@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   analysisApi,
   InstitutionalSkillAnalytics,
 } from '../../api/analysis.api';
 import { sessionsApi, SessionResponse } from '../../api/sessions.api';
+import { adminApi, SchoolItem } from '../../api/admin.api';
+import { useAuthStore } from '../auth/useAuthStore';
 import { DepartmentComparisonChart } from '../../components/charts/DepartmentComparisonChart';
 import {
   TrendingUp,
@@ -17,11 +19,24 @@ import {
 export function DepartmentComparisonPage() {
   const [sessions, setSessions] = useState<SessionResponse[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string>('');
+  const [schools, setSchools] = useState<SchoolItem[]>([]);
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string>('ALL');
   const [analytics, setAnalytics] = useState<InstitutionalSkillAnalytics | null>(null);
   const [selectedDeptCodes, setSelectedDeptCodes] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'students' | 'skills' | 'proficiency'>('students');
+
+  const { user } = useAuthStore();
+  const userRoles = useMemo(() => user?.roles.map((r) => r.toLowerCase()) || [], [user]);
+  const isAdmin = userRoles.includes('administrator');
+
+  // Load available schools for Administrator overall view
+  useEffect(() => {
+    if (isAdmin) {
+      adminApi.getAcademicStructure().then(setSchools).catch(() => {});
+    }
+  }, [isAdmin]);
 
   // 1. Fetch available sessions
   useEffect(() => {
@@ -40,10 +55,11 @@ export function DepartmentComparisonPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await analysisApi.getInstitutionalDistribution(selectedSessionId);
+      const schoolFilter = isAdmin && selectedSchoolId !== 'ALL' ? selectedSchoolId : undefined;
+      const data = await analysisApi.getInstitutionalDistribution(selectedSessionId, schoolFilter);
       setAnalytics(data);
-      if (selectedDeptCodes.length === 0 && data.department_summaries) {
-        // Select all departments by default
+      if (data.department_summaries) {
+        // Select all departments in scope by default
         setSelectedDeptCodes(data.department_summaries.map((d) => d.department_code));
       }
     } catch (err: any) {
@@ -55,7 +71,7 @@ export function DepartmentComparisonPage() {
 
   useEffect(() => {
     fetchData();
-  }, [selectedSessionId]);
+  }, [selectedSessionId, selectedSchoolId]);
 
   const toggleDept = (code: string) => {
     if (selectedDeptCodes.includes(code)) {
@@ -92,20 +108,53 @@ export function DepartmentComparisonPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
         <div>
           <div className="flex items-center space-x-2">
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 uppercase tracking-wider">
-              Dean Intelligence
+            <span
+              className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
+                isAdmin
+                  ? 'bg-purple-100 text-purple-800'
+                  : 'bg-emerald-100 text-emerald-800'
+              }`}
+            >
+              {isAdmin ? 'University Overall Scope' : `${user?.school_name || 'School'} Dean Scope`}
             </span>
-            <span className="text-xs text-slate-400">Institutional Cross-Department Comparison</span>
+            <span className="text-xs text-slate-400">
+              {isAdmin ? 'Cross-School Benchmarking' : `Dedicated to ${user?.school_name || 'School'}`}
+            </span>
           </div>
           <h2 className="text-xl font-bold text-slate-900 mt-1">
-            Department Performance & Competency Comparison
+            {isAdmin
+              ? 'University Cross-Department Comparison'
+              : `${user?.school_name || 'School'} Department Performance Comparison`}
           </h2>
           <p className="text-xs text-slate-500">
-            Compare student assessment participation, skill diversity, and average proficiency across Jeppiaar University departments.
+            {isAdmin
+              ? 'Compare student participation, skill diversity, and average proficiency across all university departments.'
+              : `Compare competency progress and student participation across departments within ${
+                  user?.school_name || 'your assigned school'
+                }.`}
           </p>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Admin-only School Switcher */}
+          {isAdmin && schools.length > 0 && (
+            <div className="flex items-center space-x-1.5">
+              <span className="text-xs font-semibold text-slate-600">School:</span>
+              <select
+                value={selectedSchoolId}
+                onChange={(e) => setSelectedSchoolId(e.target.value)}
+                className="px-2.5 py-1.5 border border-slate-200 bg-white rounded-lg text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
+              >
+                <option value="ALL">All Schools ({schools.length})</option>
+                {schools.map((sch) => (
+                  <option key={sch.school_id} value={sch.school_id}>
+                    {sch.school_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className="flex items-center space-x-2">
             <span className="text-xs font-semibold text-slate-600">Active Window:</span>
             <select

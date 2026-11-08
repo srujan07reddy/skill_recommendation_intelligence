@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   HelpCircle,
   FolderTree,
+  Users,
 } from 'lucide-react';
 import { useAuthStore } from '../../features/auth/useAuthStore';
 
@@ -94,6 +95,16 @@ export function FloatingNavAssistant({ currentTab, onNavigate }: FloatingNavAssi
         rolesAllowed: ['dean', 'hod', 'administrator', 'faculty', 'student'],
         icon: FileCheck2,
         keywords: ['student', 'form', 'self assessment', 'evaluation', 'submit'],
+      },
+      {
+        id: 'individual-records',
+        name: 'Individual Assessment Records',
+        category: 'Intelligence',
+        description:
+          'Inspect individual student skill submissions, proficiency ratings, and timestamps with CSV export capabilities.',
+        rolesAllowed: ['dean', 'hod', 'administrator'],
+        icon: Users,
+        keywords: ['individual', 'records', 'students', 'evaluations', 'raw data', 'submissions', 'rows'],
       },
       {
         id: 'comparison',

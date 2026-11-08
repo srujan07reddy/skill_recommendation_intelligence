@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   analysisApi,
   InstitutionalSkillAnalytics,
   InstitutionalGapReport,
 } from '../../api/analysis.api';
 import { sessionsApi, SessionResponse } from '../../api/sessions.api';
+import { adminApi, SchoolItem } from '../../api/admin.api';
+import { useAuthStore } from '../auth/useAuthStore';
 import { SkillDistributionChart } from '../../components/charts/SkillDistributionChart';
 import { ProficiencyBreakdownChart } from '../../components/charts/ProficiencyBreakdownChart';
 import { SkillGapHeatmap } from '../../components/charts/SkillGapHeatmap';
@@ -31,10 +33,23 @@ export function InstitutionalDashboard({
 }: InstitutionalDashboardProps) {
   const [sessions, setSessions] = useState<SessionResponse[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string>('');
+  const [schools, setSchools] = useState<SchoolItem[]>([]);
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string>('ALL');
   const [analytics, setAnalytics] = useState<InstitutionalSkillAnalytics | null>(null);
   const [gapReport, setGapReport] = useState<InstitutionalGapReport | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { user } = useAuthStore();
+  const userRoles = useMemo(() => user?.roles.map((r) => r.toLowerCase()) || [], [user]);
+  const isAdmin = userRoles.includes('administrator');
+
+  // Load available schools for Administrator overall view
+  useEffect(() => {
+    if (isAdmin) {
+      adminApi.getAcademicStructure().then(setSchools).catch(() => {});
+    }
+  }, [isAdmin]);
 
   // 1. Fetch available sessions
   useEffect(() => {
@@ -47,14 +62,15 @@ export function InstitutionalDashboard({
     });
   }, []);
 
-  // 2. Fetch institutional analytics when session changes
+  // 2. Fetch institutional analytics when session or school filter changes
   const fetchDashboardData = async () => {
     if (!selectedSessionId) return;
     setIsLoading(true);
     setError(null);
     try {
+      const schoolFilter = isAdmin && selectedSchoolId !== 'ALL' ? selectedSchoolId : undefined;
       const [distData, gapsData] = await Promise.all([
-        analysisApi.getInstitutionalDistribution(selectedSessionId),
+        analysisApi.getInstitutionalDistribution(selectedSessionId, schoolFilter),
         analysisApi.getInstitutionalGaps(selectedSessionId, true), // include draft for complete visibility
       ]);
       setAnalytics(distData);
@@ -68,7 +84,7 @@ export function InstitutionalDashboard({
 
   useEffect(() => {
     fetchDashboardData();
-  }, [selectedSessionId]);
+  }, [selectedSessionId, selectedSchoolId]);
 
   return (
     <div className="space-y-6">
@@ -76,20 +92,57 @@ export function InstitutionalDashboard({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
         <div>
           <div className="flex items-center space-x-2">
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800 uppercase tracking-wider">
-              Dean of Academic Affairs
+            <span
+              className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
+                isAdmin
+                  ? 'bg-purple-100 text-purple-800'
+                  : 'bg-blue-100 text-blue-800'
+              }`}
+            >
+              {isAdmin
+                ? 'Administrator Overall Scope'
+                : `${user?.school_name || 'School'} Dean Scope`}
             </span>
-            <span className="text-xs text-slate-400">Institutional Governance Scope</span>
+            <span className="text-xs text-slate-400">
+              {isAdmin
+                ? 'University-Wide Multi-School Intelligence'
+                : `Dedicated Scope: ${user?.school_name || 'Assigned School'}`}
+            </span>
           </div>
           <h2 className="text-xl font-bold text-slate-900 mt-1">
-            University Skill Intelligence Dashboard
+            {isAdmin
+              ? 'University Overall Skill Intelligence'
+              : `${user?.school_name || 'School'} Skill Intelligence Dashboard`}
           </h2>
           <p className="text-xs text-slate-500">
-            Real-time cross-departmental cohort competency analytics and benchmark monitoring.
+            {isAdmin
+              ? 'Comprehensive cross-school cohort competency analytics and curriculum monitoring.'
+              : `Departmental cohort competency analytics and benchmark monitoring for ${
+                  user?.school_name || 'your assigned school'
+                }.`}
           </p>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Admin-only School Switcher */}
+          {isAdmin && schools.length > 0 && (
+            <div className="flex items-center space-x-1.5">
+              <span className="text-xs font-semibold text-slate-600">School:</span>
+              <select
+                value={selectedSchoolId}
+                onChange={(e) => setSelectedSchoolId(e.target.value)}
+                className="px-2.5 py-1.5 border border-slate-200 bg-white rounded-lg text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
+              >
+                <option value="ALL">All Schools ({schools.length})</option>
+                {schools.map((sch) => (
+                  <option key={sch.school_id} value={sch.school_id}>
+                    {sch.school_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className="flex items-center space-x-2">
             <span className="text-xs font-semibold text-slate-600">Active Window:</span>
             <select

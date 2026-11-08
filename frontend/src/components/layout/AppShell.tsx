@@ -23,6 +23,7 @@ import { ExportCenterView } from '../../features/exports/ExportCenterView';
 import { DepartmentManagementPage } from '../../features/admin/DepartmentManagementPage';
 import { SkillTaxonomyPage } from '../../features/admin/SkillTaxonomyPage';
 import { OperationalMonitoringPage } from '../../features/admin/OperationalMonitoringPage';
+import { IndividualRecordsView } from '../../features/analytics/IndividualRecordsView';
 import { FloatingNavAssistant } from '../navigation/FloatingNavAssistant';
 
 export function AppShell() {
@@ -88,7 +89,9 @@ export function AppShell() {
               <p className="text-xs md:text-sm text-blue-200 mt-1">
                 {user.department_name
                   ? `${user.department_name} Department • ${user.school_name || 'Jeppiaar University'}`
-                  : 'Institutional Governance Scope • Jeppiaar University'}
+                  : user.school_name
+                  ? `${user.school_name} Scope • Jeppiaar University`
+                  : 'Overall University Scope • All Schools • Jeppiaar University'}
               </p>
             </div>
             <div className="hidden sm:block text-right space-y-1">
@@ -270,6 +273,10 @@ export function AppShell() {
               <OperationalMonitoringPage />
             )}
 
+            {currentTab === 'individual-records' && (
+              <IndividualRecordsView initialSessionId={selectedSession?.session_id} />
+            )}
+
             {currentTab !== 'overview' &&
               currentTab !== 'ingestion' &&
               currentTab !== 'student-form' &&
@@ -281,7 +288,8 @@ export function AppShell() {
               currentTab !== 'exports' &&
               currentTab !== 'academic-structure' &&
               currentTab !== 'taxonomy' &&
-              currentTab !== 'telemetry' && (
+              currentTab !== 'telemetry' &&
+              currentTab !== 'individual-records' && (
               <div className="py-12 text-center text-slate-400 space-y-2">
                 <p className="text-sm font-medium text-slate-600 capitalize">{currentTab.replace('-', ' ')} Module</p>
                 <p className="text-xs text-slate-400">Scheduled for sequential activation in subsequent development phases.</p>

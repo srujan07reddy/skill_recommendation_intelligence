@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { adminApi, SchoolItem } from '../../api/admin.api';
+import { useAuthStore } from '../auth/useAuthStore';
 import {
   Building2,
   GraduationCap,
@@ -16,6 +17,11 @@ export function DepartmentManagementPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { user } = useAuthStore();
+  const userRoles = useMemo(() => user?.roles.map((r) => r.toLowerCase()) || [], [user]);
+  const isAdmin = userRoles.includes('administrator');
+  const isDean = userRoles.includes('dean');
 
   const loadSchools = async () => {
     setIsLoading(true);
@@ -62,16 +68,25 @@ export function DepartmentManagementPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
         <div>
           <div className="flex items-center space-x-2">
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800 uppercase tracking-wider">
-              Administration Workspace
+            <span
+              className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${isAdmin
+                  ? 'bg-purple-100 text-purple-800'
+                  : 'bg-blue-100 text-blue-800'
+                }`}
+            >
+              {isAdmin ? 'University Overall Administration' : `${user?.school_name || 'School'} Dean Scope`}
             </span>
-            <span className="text-xs text-slate-400">Institutional Academic Configuration</span>
+            <span className="text-xs text-slate-400">
+              {isAdmin ? 'University-Wide All Schools' : `Dedicated to ${user?.school_name || 'School'}`}
+            </span>
           </div>
           <h2 className="text-xl font-bold text-slate-900 mt-1">
-            Jeppiaar University Academic Structure
+            {isAdmin ? 'Jeppiaar University Academic Structure' : `${user?.school_name || 'School'} Structure & Departments`}
           </h2>
           <p className="text-xs text-slate-500">
-            Hierarchical mapping of University Schools, Academic Departments, and Degree Programmes.
+            {isAdmin
+              ? 'Complete hierarchical structure of all University Schools, Academic Departments, and Degree Programmes.'
+              : `Academic departments and degree programmes under your school (${user?.school_name || 'Assigned School'}).`}
           </p>
         </div>
 
@@ -86,6 +101,19 @@ export function DepartmentManagementPage() {
           </button>
         </div>
       </div>
+
+      {isDean && (
+        <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl text-blue-900 text-xs flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
+            <span>
+              <strong>School-Scoped Access:</strong> As Dean, you are assigned to{' '}
+              <strong>{user?.school_name || 'your designated school'}</strong>. Each school has only one Dean.
+              Cross-school overall view is reserved for Administrator.
+            </span>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-900 text-xs flex items-center space-x-2">

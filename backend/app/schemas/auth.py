@@ -22,6 +22,8 @@ class UserSummaryResponse(BaseModel):
     roles: List[str]
     department_id: Optional[uuid.UUID] = None
     department_name: Optional[str] = None
+    school_id: Optional[uuid.UUID] = None
+    school_code: Optional[str] = None
     school_name: Optional[str] = None
     must_change_password: bool
 

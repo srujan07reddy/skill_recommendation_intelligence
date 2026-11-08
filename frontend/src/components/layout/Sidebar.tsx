@@ -7,7 +7,8 @@ import {
   FileSpreadsheet,
   Settings,
   ShieldCheck,
-  Building
+  Building,
+  Users,
 } from 'lucide-react';
 import { useAuthStore } from '../../features/auth/useAuthStore';
 
@@ -42,8 +43,30 @@ export function Sidebar({ currentTab, onSelectTab }: SidebarProps) {
               }`}
             >
               <LayoutDashboard className="w-4 h-4 text-blue-600" />
-              <span>{isDean ? 'Institutional Overview' : isHOD ? 'Department Dashboard' : 'System Overview'}</span>
+              <span>
+                {isAdmin
+                  ? 'University Overall View'
+                  : isDean
+                  ? `${user?.school_name || 'School'} Overview`
+                  : isHOD
+                  ? 'Department Dashboard'
+                  : 'System Overview'}
+              </span>
             </button>
+
+            {(isDean || isHOD || isAdmin) && (
+              <button
+                onClick={() => onSelectTab('individual-records')}
+                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-semibold transition ${
+                  currentTab === 'individual-records'
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                }`}
+              >
+                <Users className="w-4 h-4 text-cyan-600" />
+                <span>Individual Assessment Data</span>
+              </button>
+            )}
 
             {(isDean || isHOD) && (
               <button
@@ -83,7 +106,7 @@ export function Sidebar({ currentTab, onSelectTab }: SidebarProps) {
               <span>Student Assessment Form</span>
             </button>
 
-            {isDean && (
+            {(isDean || isAdmin) && (
               <button
                 onClick={() => onSelectTab('comparison')}
                 className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-semibold transition ${
@@ -93,7 +116,7 @@ export function Sidebar({ currentTab, onSelectTab }: SidebarProps) {
                 }`}
               >
                 <Layers className="w-4 h-4 text-emerald-600" />
-                <span>Department Comparison</span>
+                <span>{isAdmin ? 'Cross-School Department Comparison' : `${user?.school_name || 'School'} Comparison`}</span>
               </button>
             )}
 
@@ -173,7 +196,7 @@ export function Sidebar({ currentTab, onSelectTab }: SidebarProps) {
                 }`}
               >
                 <Building className="w-4 h-4 text-slate-600" />
-                <span>Jeppiaar Schools</span>
+                <span>{isAdmin ? 'Jeppiaar Schools (All)' : `${user?.school_name || 'School'} Departments`}</span>
               </button>
 
               <button
