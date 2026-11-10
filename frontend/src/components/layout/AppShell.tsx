@@ -10,10 +10,12 @@ import { ValidationReportResponse } from '../../api/uploads.api';
 import { SessionManagementView } from '../../features/sessions/SessionManagementView';
 import { FileUploadView } from '../../features/uploads/FileUploadView';
 import { ValidationResultsView } from '../../features/uploads/ValidationResultsView';
-import { StudentAssessmentForm } from '../../features/assessments/StudentAssessmentForm';
+import { SectionBulkUploadView } from '../../features/uploads/SectionBulkUploadView';
 import { DepartmentAnalyticsView } from '../../features/analytics/DepartmentAnalyticsView';
+import { SectionEvaluationView } from '../../features/analytics/SectionEvaluationView';
 import { CurriculumBenchmarksView } from '../../features/benchmarks/CurriculumBenchmarksView';
 import { RecommendationsView } from '../../features/recommendations/RecommendationsView';
+import { RoadmapExplorerView } from '../../features/roadmaps/RoadmapExplorerView';
 import { InstitutionalDashboard } from '../../features/dashboards/InstitutionalDashboard';
 import { DepartmentDashboard } from '../../features/dashboards/DepartmentDashboard';
 import { DepartmentComparisonPage } from '../../features/comparison/DepartmentComparisonPage';
@@ -31,11 +33,12 @@ export function AppShell() {
   const [currentTab, setCurrentTab] = useState('overview');
   const [health, setHealth] = useState<HealthCheckResponse | null>(null);
 
-  // Ingestion workflow state
+  // Ingestion & section evaluation workflow state
   const [selectedSession, setSelectedSession] = useState<SessionResponse | null>(null);
   const [ingestionStep, setIngestionStep] = useState<'sessions' | 'upload' | 'validation'>('sessions');
   const [validationReport, setValidationReport] = useState<ValidationReportResponse | null>(null);
-  const [activeStudentSessionId, setActiveStudentSessionId] = useState<string | null>(null);
+  const [evaluatedSessionId, setEvaluatedSessionId] = useState<string | undefined>(undefined);
+  const [evaluatedSection, setEvaluatedSection] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     initialize();
@@ -128,6 +131,8 @@ export function AppShell() {
                   <DepartmentDashboard
                     onNavigateToRecommendations={() => setCurrentTab('recommendations')}
                     onNavigateToBenchmarks={() => setCurrentTab('benchmarks')}
+                    onNavigateToBulkUpload={() => setCurrentTab('bulk-upload')}
+                    onNavigateToSectionEval={() => setCurrentTab('section-eval')}
                   />
                 )}
               </div>
@@ -137,6 +142,28 @@ export function AppShell() {
               <DepartmentComparisonPage />
             )}
 
+            {currentTab === 'bulk-upload' && (
+              <SectionBulkUploadView
+                onUploadCommitted={(sessionId, sectionsDetected) => {
+                  setEvaluatedSessionId(sessionId);
+                  setEvaluatedSection(
+                    sectionsDetected && sectionsDetected.length === 1
+                      ? sectionsDetected[0]
+                      : 'ALL'
+                  );
+                  setCurrentTab('section-eval');
+                }}
+              />
+            )}
+
+            {currentTab === 'section-eval' && (
+              <SectionEvaluationView
+                initialSessionId={evaluatedSessionId || selectedSession?.session_id}
+                initialSection={evaluatedSection}
+                onNavigateToBulkUpload={() => setCurrentTab('bulk-upload')}
+              />
+            )}
+
             {currentTab === 'ingestion' && (
               <div>
                 {ingestionStep === 'sessions' && (
@@ -144,10 +171,6 @@ export function AppShell() {
                     selectedSessionId={selectedSession?.session_id || null}
                     onSelectSession={setSelectedSession}
                     onNavigateToIngestion={() => setIngestionStep('upload')}
-                    onNavigateToStudentForm={(sid) => {
-                      setActiveStudentSessionId(sid);
-                      setCurrentTab('student-form');
-                    }}
                   />
                 )}
 
@@ -167,35 +190,11 @@ export function AppShell() {
                     report={validationReport}
                     session={selectedSession}
                     onConfirmSuccess={() => {
-                      alert('Dataset successfully committed into active session buffer!');
-                      setIngestionStep('sessions');
+                      setEvaluatedSessionId(selectedSession.session_id);
+                      setCurrentTab('section-eval');
                     }}
                     onReupload={() => setIngestionStep('upload')}
                   />
-                )}
-              </div>
-            )}
-
-            {currentTab === 'student-form' && (
-              <div>
-                {activeStudentSessionId || selectedSession?.session_id ? (
-                  <StudentAssessmentForm
-                    sessionId={activeStudentSessionId || selectedSession!.session_id}
-                    onBack={() => setCurrentTab('ingestion')}
-                  />
-                ) : (
-                  <div className="text-center py-12 space-y-3">
-                    <p className="text-sm font-semibold text-slate-700">No session selected</p>
-                    <p className="text-xs text-slate-400">
-                      Please select or activate an assessment session from the Sessions & Ingestion view first.
-                    </p>
-                    <button
-                      onClick={() => setCurrentTab('ingestion')}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition"
-                    >
-                      Go to Sessions
-                    </button>
-                  </div>
                 )}
               </div>
             )}
@@ -230,8 +229,10 @@ export function AppShell() {
 
             {currentTab === 'recommendations' && (
               <div>
-                {selectedSession?.session_id ? (
-                  <RecommendationsView sessionId={selectedSession.session_id} />
+                {evaluatedSessionId || selectedSession?.session_id ? (
+                  <RecommendationsView
+                    sessionId={(evaluatedSessionId || selectedSession?.session_id)!}
+                  />
                 ) : (
                   <div className="text-center py-12 space-y-3">
                     <p className="text-sm font-semibold text-slate-700">No session selected for recommendations</p>
@@ -247,6 +248,12 @@ export function AppShell() {
                   </div>
                 )}
               </div>
+            )}
+
+            {currentTab === 'roadmaps' && (
+              <RoadmapExplorerView
+                initialSessionId={evaluatedSessionId || selectedSession?.session_id}
+              />
             )}
 
             {currentTab === 'proposals' && (

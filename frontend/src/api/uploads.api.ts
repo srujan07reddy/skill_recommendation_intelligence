@@ -10,12 +10,15 @@ export interface RowValidationError {
 
 export interface ValidationReportResponse {
   upload_id: string;
+  session_id?: string | null;
   filename: string;
   validation_status: 'VALID' | 'INVALID' | 'WARNINGS';
   total_rows: number;
   valid_rows_count: number;
   error_rows_count: number;
   warning_rows_count: number;
+  sections_detected?: string[];
+  format_detected?: 'LONG' | 'WIDE';
   errors: RowValidationError[];
   sample_valid_rows: Record<string, any>[];
 }
@@ -29,12 +32,55 @@ export interface UploadConfirmResponse {
 }
 
 export const uploadsApi = {
-  uploadDataset: async (sessionId: string, file: File): Promise<ValidationReportResponse> => {
+  uploadDataset: async (
+    sessionId: string,
+    file: File,
+    section?: string
+  ): Promise<ValidationReportResponse> => {
     const formData = new FormData();
     formData.append('file', file);
+    if (section && section.trim()) {
+      formData.append('section', section.trim());
+    }
 
     const res = await apiClient.post<ValidationReportResponse>(
       `/sessions/${sessionId}/uploads`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return res.data;
+  },
+
+  directBulkUpload: async (
+    file: File,
+    options?: {
+      section?: string;
+      sessionId?: string;
+      sessionName?: string;
+      academicYear?: string;
+    }
+  ): Promise<ValidationReportResponse> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (options?.section && options.section.trim()) {
+      formData.append('section', options.section.trim());
+    }
+    if (options?.sessionId && options.sessionId.trim()) {
+      formData.append('session_id', options.sessionId.trim());
+    }
+    if (options?.sessionName && options.sessionName.trim()) {
+      formData.append('session_name', options.sessionName.trim());
+    }
+    if (options?.academicYear) {
+      formData.append('academic_year', options.academicYear);
+    }
+
+    const res = await apiClient.post<ValidationReportResponse>(
+      `/uploads/direct`,
       formData,
       {
         headers: {

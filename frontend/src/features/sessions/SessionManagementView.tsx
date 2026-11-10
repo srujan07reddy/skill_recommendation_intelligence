@@ -12,7 +12,6 @@ import {
   Trash2,
   UploadCloud,
   Clock,
-  ExternalLink,
   RefreshCw,
 } from 'lucide-react';
 
@@ -20,16 +19,15 @@ interface SessionManagementViewProps {
   selectedSessionId: string | null;
   onSelectSession: (session: SessionResponse | null) => void;
   onNavigateToIngestion: () => void;
-  onNavigateToStudentForm: (sessionId: string) => void;
 }
 
 export function SessionManagementView({
   selectedSessionId,
   onSelectSession,
   onNavigateToIngestion,
-  onNavigateToStudentForm,
 }: SessionManagementViewProps) {
   const { user } = useAuthStore();
+  const isHOD = user?.roles.some((r) => r.toLowerCase() === 'hod') || false;
   const [sessions, setSessions] = useState<SessionResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -242,26 +240,19 @@ export function SessionManagementView({
 
                     {session.status === 'Active' && (
                       <>
-                        <button
-                          onClick={() => {
-                            onSelectSession(session);
-                            onNavigateToIngestion();
-                          }}
-                          className="flex items-center space-x-1 px-2.5 py-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 rounded text-xs font-medium transition"
-                          title="Import Bulk Dataset"
-                        >
-                          <UploadCloud className="w-3.5 h-3.5" />
-                          <span>Import Data</span>
-                        </button>
-
-                        <button
-                          onClick={() => onNavigateToStudentForm(session.session_id)}
-                          className="flex items-center space-x-1 px-2.5 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 rounded text-xs font-medium transition"
-                          title="Open Student Form Link"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                          <span>Student Form</span>
-                        </button>
+                        {isHOD && (
+                          <button
+                            onClick={() => {
+                              onSelectSession(session);
+                              onNavigateToIngestion();
+                            }}
+                            className="flex items-center space-x-1 px-2.5 py-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 rounded text-xs font-medium transition"
+                            title="Import Bulk Dataset"
+                          >
+                            <UploadCloud className="w-3.5 h-3.5" />
+                            <span>Import Data</span>
+                          </button>
+                        )}
 
                         <button
                           onClick={() => handleClose(session.session_id)}

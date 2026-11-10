@@ -38,6 +38,8 @@ class DepartmentSkillAnalytics(BaseModel):
     department_id: str
     department_code: str
     department_name: str
+    section: Optional[str] = None
+    available_sections: List[str] = []
     total_eligible_students: int
     participating_students: int
     participation_rate: float
@@ -86,6 +88,8 @@ class DepartmentGapReport(BaseModel):
     department_id: str
     department_code: str
     department_name: str
+    section: Optional[str] = None
+    available_sections: List[str] = []
     benchmarks_evaluated: int
     approved_benchmarks_count: int
     draft_benchmarks_count: int
@@ -105,6 +109,59 @@ class InstitutionalGapReport(BaseModel):
     total_moderate_gaps: int
     department_gap_summaries: List[Dict[str, Any]]
     priority_gaps: List[SkillGapItem]
+
+
+class StudentSkillHave(BaseModel):
+    skill_id: str
+    skill_name: str
+    proficiency_level: str
+    numeric_proficiency: float
+    raw_score: Optional[float] = None
+
+
+class StudentSkillGapItem(BaseModel):
+    skill_name: str
+    relevance_type: str
+    target_proficiency: float
+    current_proficiency: float
+    gap_delta: float
+    status: str  # MISSING, BELOW_TARGET, MEETS_TARGET
+
+
+class StudentStudyItem(BaseModel):
+    skill_name: str
+    action_type: str  # CORE_FOUNDATION, UPGRADE_PROFICIENCY, ADVANCED_CERTIFICATION
+    priority: str  # CRITICAL, HIGH, MEDIUM, LOW
+    study_focus: str
+    roadmap_slug: Optional[str] = None
+    roadmap_url: Optional[str] = None
+    roadmap_topics: List[str] = []
+
+
+class StudentEvaluationSummary(BaseModel):
+    session_student_ref: str
+    section: str
+    department_code: str
+    average_proficiency: float
+    readiness_status: str  # NEEDS_CORE_STUDY, DEVELOPING, BENCHMARK_READY
+    skills_have: List[StudentSkillHave]
+    skill_gaps: List[StudentSkillGapItem]
+    what_to_study: List[StudentStudyItem]
+
+
+class SectionEvaluationResponse(BaseModel):
+    session_id: str
+    department_id: str
+    department_code: str
+    department_name: str
+    selected_section: Optional[str] = None
+    available_sections: List[str] = []
+    total_students: int
+    total_records: int
+    what_they_have: List[SkillDistributionItem]
+    gap_report: DepartmentGapReport
+    cohort_study_roadmap: List[Dict[str, Any]]
+    student_evaluations: List[StudentEvaluationSummary]
 
 
 class BenchmarkResponse(BaseModel):

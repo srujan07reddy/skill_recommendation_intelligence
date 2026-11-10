@@ -86,9 +86,11 @@ class SkillAnalysisEngine:
         records: List[Dict[str, Any]],
         total_eligible_students: int = 250, # Standard cohort benchmark
         taxonomy_details: Optional[Dict[str, Dict[str, str]]] = None,
+        section: Optional[str] = None,
     ) -> DepartmentSkillAnalytics:
         """
-        Analyzes skill presence, coverage, and proficiency for a single academic department.
+        Analyzes skill presence, coverage, and proficiency for a single academic department,
+        optionally filtered to a specific student Section.
         """
         taxonomy_lookup = taxonomy_details or {}
 
@@ -98,6 +100,20 @@ class SkillAnalysisEngine:
             if r.get("department_code") == department_code
             or r.get("department_id") == department_id
         ]
+
+        available_sections = sorted({
+            str(r.get("section")).strip()
+            for r in dept_records
+            if r.get("section") and str(r.get("section")).strip()
+        })
+
+        active_section: Optional[str] = None
+        if section and section.strip() and section.strip().upper() != "ALL":
+            active_section = section.strip()
+            dept_records = [
+                r for r in dept_records
+                if str(r.get("section") or "General").strip().lower() == active_section.lower()
+            ]
 
         # Distinct participating students in this department
         participating_students_set: Set[str] = {
@@ -171,6 +187,8 @@ class SkillAnalysisEngine:
             department_id=department_id,
             department_code=department_code,
             department_name=department_name,
+            section=active_section,
+            available_sections=available_sections,
             total_eligible_students=total_eligible_students,
             participating_students=participating_count,
             participation_rate=participation_rate,

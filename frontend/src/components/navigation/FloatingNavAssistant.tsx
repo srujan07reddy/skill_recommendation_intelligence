@@ -19,6 +19,7 @@ import {
   HelpCircle,
   FolderTree,
   Users,
+  Map,
 } from 'lucide-react';
 import { useAuthStore } from '../../features/auth/useAuthStore';
 
@@ -66,15 +67,36 @@ export function FloatingNavAssistant({ currentTab, onNavigate }: FloatingNavAssi
         keywords: ['overview', 'dashboard', 'kpi', 'penetration', 'summary', 'home'],
       },
       {
-        id: 'ingestion',
-        name: 'Sessions & Data Ingestion',
+        id: 'bulk-upload',
+        name: 'Section-Wise Bulk Upload (Excel / CSV)',
         category: 'Intelligence',
         description:
-          'Create time-bounded assessment windows, upload Excel (.xlsx) / CSV datasets, and inspect row validation reports.',
-        rolesAllowed: ['dean', 'hod', 'administrator'],
+          'Direct HOD upload for section-wise student Excel (.xlsx, .xls) or CSV spreadsheets supporting Wide & Detailed formats.',
+        rolesAllowed: ['hod'],
         icon: UploadCloud,
-        recommendedFor: 'HODs & Academic Deans',
-        keywords: ['sessions', 'upload', 'import', 'excel', 'csv', 'validation', 'ingestion'],
+        recommendedFor: 'Department HODs',
+        keywords: ['upload', 'bulk', 'excel', 'csv', 'xls', 'section', 'import', 'hod'],
+      },
+      {
+        id: 'section-eval',
+        name: 'Section Eval & Study Plan (Have / Gap / Study)',
+        category: 'Intelligence',
+        description:
+          'Evaluate each section and student pseudonym for current skills, benchmark gaps, and personalized study plans.',
+        rolesAllowed: ['dean', 'hod', 'administrator'],
+        icon: FileSpreadsheet,
+        recommendedFor: 'HODs & Deans',
+        keywords: ['section', 'study', 'evaluation', 'gaps', 'what they have', 'roadmap'],
+      },
+      {
+        id: 'ingestion',
+        name: 'Assessment Sessions Lifecycle',
+        category: 'Intelligence',
+        description:
+          'View active ephemeral sessions, expiry timers, close sessions, or trigger physical zero-retention purges.',
+        rolesAllowed: ['dean', 'hod', 'administrator'],
+        icon: Layers,
+        keywords: ['sessions', 'purge', 'ttl', 'close', 'window'],
       },
       {
         id: 'analytics',
@@ -85,16 +107,6 @@ export function FloatingNavAssistant({ currentTab, onNavigate }: FloatingNavAssi
         rolesAllowed: ['dean', 'hod', 'administrator', 'faculty'],
         icon: Layers,
         keywords: ['analytics', 'skills', 'gaps', 'heatmap', 'proficiency', 'distribution'],
-      },
-      {
-        id: 'student-form',
-        name: 'Student Assessment Portal',
-        category: 'Intelligence',
-        description:
-          'Direct self-evaluation entry for students to rate their technical skills during an active session.',
-        rolesAllowed: ['dean', 'hod', 'administrator', 'faculty', 'student'],
-        icon: FileCheck2,
-        keywords: ['student', 'form', 'self assessment', 'evaluation', 'submit'],
       },
       {
         id: 'individual-records',
@@ -122,10 +134,21 @@ export function FloatingNavAssistant({ currentTab, onNavigate }: FloatingNavAssi
         name: 'Targeted Development Events',
         category: 'Intelligence',
         description:
-          'Deterministic recommendations mapping detected curriculum deficits to Bootcamps, Workshops, and Certifications.',
+          'Deterministic recommendations mapping detected curriculum deficits to Bootcamps, Workshops, and roadmap.sh guides.',
         rolesAllowed: ['dean', 'hod', 'administrator', 'faculty'],
         icon: Compass,
         keywords: ['recommendations', 'bootcamp', 'workshop', 'events', 'training', 'interventions'],
+      },
+      {
+        id: 'roadmaps',
+        name: 'Career Roadmaps (roadmap.sh)',
+        category: 'Intelligence',
+        description:
+          'Interactive visual career role roadmaps (Backend, Frontend, AI, DevOps, Security) overlaid with cohort skill gaps.',
+        rolesAllowed: ['dean', 'hod', 'administrator', 'faculty'],
+        icon: Map,
+        recommendedFor: 'Easy Gap & Path Analysis',
+        keywords: ['roadmap', 'roadmap.sh', 'career', 'study path', 'backend', 'frontend', 'ai', 'milestones'],
       },
       {
         id: 'proposals',
@@ -162,13 +185,17 @@ export function FloatingNavAssistant({ currentTab, onNavigate }: FloatingNavAssi
       },
       {
         id: 'academic-structure',
-        name: 'Jeppiaar Academic Structure',
+        name: userRoles.includes('administrator')
+          ? 'Schools, Departments & Dean Accounts'
+          : 'Departments & HOD Login Credentials',
         category: 'Academic Administration',
-        description:
-          'Manage university Schools (Computing, Engineering, Management), Departments, and Degree Programs.',
+        description: userRoles.includes('administrator')
+          ? 'Create university Schools, add Departments under Schools, and provision Dean login credentials.'
+          : 'View departments under your School and add HOD email IDs & login credentials.',
         rolesAllowed: ['dean', 'administrator'],
         icon: Building,
-        keywords: ['schools', 'departments', 'programs', 'academic structure', 'faculty'],
+        recommendedFor: userRoles.includes('administrator') ? 'Administrator' : 'School Dean',
+        keywords: ['schools', 'departments', 'hod', 'dean', 'credentials', 'email', 'password', 'users'],
       },
       {
         id: 'taxonomy',
@@ -198,7 +225,8 @@ export function FloatingNavAssistant({ currentTab, onNavigate }: FloatingNavAssi
   const filteredFeatures = useMemo(() => {
     return features.filter((feat) => {
       const roleMatches =
-        feat.rolesAllowed.some((r) => userRoles.includes(r)) || userRoles.includes('administrator');
+        feat.rolesAllowed.some((r) => userRoles.includes(r)) ||
+        (userRoles.includes('administrator') && feat.id !== 'bulk-upload');
       if (!roleMatches) return false;
 
       if (!searchQuery.trim()) return true;
@@ -439,16 +467,16 @@ export function FloatingNavAssistant({ currentTab, onNavigate }: FloatingNavAssi
                     </span>
                     <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-bold text-slate-900">1. Session Creation & Ingestion</h4>
+                        <h4 className="text-sm font-bold text-slate-900">1. HOD Section-Wise Bulk Upload</h4>
                         <button
-                          onClick={() => handleSelect('ingestion')}
+                          onClick={() => handleSelect(userRoles.includes('hod') ? 'bulk-upload' : 'ingestion')}
                           className="text-xs text-blue-600 font-semibold hover:underline"
                         >
-                          Go to Ingestion →
+                          {userRoles.includes('hod') ? 'Go to Bulk Upload →' : 'View Sessions →'}
                         </button>
                       </div>
                       <p className="text-xs text-slate-600 mt-1">
-                        HOD or Dean opens a time-bounded session (e.g. 24h retention) and uploads cohort assessment spreadsheets (.xlsx/.csv). Raw roll numbers are converted to HMAC pseudonyms and never stored permanently.
+                        HOD selects a section (e.g., Section A) and uploads student assessment sheets (.xlsx, .xls, .csv) in Wide or Detailed format. Raw roll numbers are pseudonymized via ADR-001 HMAC and stored strictly in volatile memory.
                       </p>
                     </div>
                   </div>
@@ -460,16 +488,16 @@ export function FloatingNavAssistant({ currentTab, onNavigate }: FloatingNavAssi
                     </span>
                     <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-bold text-slate-900">2. Skill Distribution & Gap Analysis</h4>
+                        <h4 className="text-sm font-bold text-slate-900">2. Section Evaluation: Have / Gaps / Study Plan</h4>
                         <button
-                          onClick={() => handleSelect('analytics')}
+                          onClick={() => handleSelect('section-eval')}
                           className="text-xs text-blue-600 font-semibold hover:underline"
                         >
-                          Go to Analytics →
+                          Go to Section Eval →
                         </button>
                       </div>
                       <p className="text-xs text-slate-600 mt-1">
-                        The engine computes 3-tier proficiency (Beginner, Intermediate, Expert) and evaluates cohort coverage against approved curriculum benchmarks (ADR-008).
+                        Each section and student pseudonym is evaluated against curriculum benchmarks to highlight what skills they currently have, skill deficits, and personalized study focus modules.
                       </p>
                     </div>
                   </div>

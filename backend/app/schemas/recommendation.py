@@ -27,6 +27,7 @@ class RecommendationResponse(BaseModel):
     suggested_duration: str
     learning_objectives: List[str]
     supporting_metrics: Dict[str, Any]
+    roadmap_sh: Optional[Dict[str, Any]] = None
     rule_id: str
     rule_version: str = "1.0"
     status: str = "GENERATED"

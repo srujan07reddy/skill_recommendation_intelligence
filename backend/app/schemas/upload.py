@@ -18,12 +18,15 @@ class ValidationReportResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     upload_id: str
+    session_id: Optional[str] = None
     filename: str
     validation_status: str # VALID, INVALID, WARNINGS
     total_rows: int
     valid_rows_count: int
     error_rows_count: int
     warning_rows_count: int
+    sections_detected: List[str] = []
+    format_detected: str = "LONG"
     errors: List[RowValidationError]
     sample_valid_rows: List[Dict[str, Any]]
 

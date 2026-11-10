@@ -45,16 +45,16 @@ A web-based institutional decision-support system designed to collect, normalize
 - Docker & Docker Compose (optional for local containerized Postgres & Redis)
 
 ### 1. Backend Setup
-```bash
+```powershell
 cd backend
 python -m venv .venv
-# Windows:
-.venv\Scripts\activate
+# Windows PowerShell:
+.\.venv\Scripts\Activate.ps1
 # Linux/macOS:
-source .venv/bin/activate
+# source .venv/bin/activate
 
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+python -m uvicorn app.main:app --reload --port 8000
 ```
 Open API documentation at: `http://localhost:8000/docs`
 

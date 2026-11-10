@@ -15,6 +15,7 @@ from app.api.v1.endpoints import (
     governance,
     exports,
     admin,
+    roadmaps,
 )
 
 api_router = APIRouter()
@@ -30,6 +31,7 @@ api_router.include_router(sessions.router)
 
 # Bulk Uploads & Ingestion
 api_router.include_router(uploads.router)
+api_router.include_router(uploads.direct_router)
 
 # Student Self-Assessment Forms
 api_router.include_router(assessments.router)
@@ -51,4 +53,7 @@ api_router.include_router(exports.router)
 
 # Administration, Academic Structure & Telemetry
 api_router.include_router(admin.router)
+
+# Learning Roadmaps Integration (roadmap.sh)
+api_router.include_router(roadmaps.router)
 

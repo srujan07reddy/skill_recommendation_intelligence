@@ -30,6 +30,7 @@ export function IndividualRecordsView({ initialSessionId }: IndividualRecordsVie
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDept, setSelectedDept] = useState('ALL');
+  const [selectedSection, setSelectedSection] = useState('ALL');
   const [selectedProficiency, setSelectedProficiency] = useState('ALL');
 
   const { user } = useAuthStore();
@@ -67,7 +68,7 @@ export function IndividualRecordsView({ initialSessionId }: IndividualRecordsVie
     fetchRecords();
   }, [selectedSessionId]);
 
-  // Extract unique departments from records
+  // Extract unique departments & sections from records
   const availableDepts = useMemo(() => {
     const depts = new Set<string>();
     records.forEach((r) => {
@@ -76,10 +77,19 @@ export function IndividualRecordsView({ initialSessionId }: IndividualRecordsVie
     return Array.from(depts).sort();
   }, [records]);
 
+  const availableSections = useMemo(() => {
+    const secs = new Set<string>();
+    records.forEach((r) => {
+      if (r.section) secs.add(r.section);
+    });
+    return Array.from(secs).sort();
+  }, [records]);
+
   // Client-side filtering
   const filteredRecords = useMemo(() => {
     return records.filter((r) => {
       if (selectedDept !== 'ALL' && r.department_code !== selectedDept) return false;
+      if (selectedSection !== 'ALL' && (r.section || 'General') !== selectedSection) return false;
       if (selectedProficiency !== 'ALL' && r.proficiency_level.toUpperCase() !== selectedProficiency)
         return false;
       if (searchTerm.trim()) {
@@ -87,11 +97,12 @@ export function IndividualRecordsView({ initialSessionId }: IndividualRecordsVie
         const matchesRef = r.session_student_ref.toLowerCase().includes(q);
         const matchesSkill = r.skill_name.toLowerCase().includes(q);
         const matchesDept = r.department_code.toLowerCase().includes(q);
-        if (!matchesRef && !matchesSkill && !matchesDept) return false;
+        const matchesSection = (r.section || '').toLowerCase().includes(q);
+        if (!matchesRef && !matchesSkill && !matchesDept && !matchesSection) return false;
       }
       return true;
     });
-  }, [records, selectedDept, selectedProficiency, searchTerm]);
+  }, [records, selectedDept, selectedSection, selectedProficiency, searchTerm]);
 
   const uniqueStudentsCount = useMemo(() => {
     return new Set(filteredRecords.map((r) => r.session_student_ref)).size;
@@ -103,6 +114,7 @@ export function IndividualRecordsView({ initialSessionId }: IndividualRecordsVie
     const headers = [
       'Student Pseudonym',
       'Department',
+      'Section',
       'Skill Name',
       'Proficiency Level',
       'Numeric Proficiency',
@@ -111,6 +123,7 @@ export function IndividualRecordsView({ initialSessionId }: IndividualRecordsVie
     const rows = filteredRecords.map((r) => [
       `"${r.session_student_ref}"`,
       `"${r.department_code}"`,
+      `"${r.section || 'General'}"`,
       `"${r.skill_name}"`,
       `"${r.proficiency_level}"`,
       r.numeric_proficiency,
@@ -253,6 +266,25 @@ export function IndividualRecordsView({ initialSessionId }: IndividualRecordsVie
             </div>
           )}
 
+          {/* Section Filter */}
+          {availableSections.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-slate-500 font-medium">Section:</span>
+              <select
+                value={selectedSection}
+                onChange={(e) => setSelectedSection(e.target.value)}
+                className="text-xs border border-slate-200 bg-slate-50 rounded-lg px-2.5 py-1.5 font-medium text-slate-700"
+              >
+                <option value="ALL">All Sections ({availableSections.length})</option>
+                {availableSections.map((sec) => (
+                  <option key={sec} value={sec}>
+                    {sec}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Proficiency Level Filter */}
           <div className="flex items-center gap-1.5">
             <span className="text-xs text-slate-500 font-medium">Proficiency:</span>
@@ -292,6 +324,7 @@ export function IndividualRecordsView({ initialSessionId }: IndividualRecordsVie
                 <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider">
                   <th className="py-3 px-4">Student Pseudonym</th>
                   <th className="py-3 px-4">Department</th>
+                  <th className="py-3 px-4">Section</th>
                   <th className="py-3 px-4">Skill Name</th>
                   <th className="py-3 px-4">Proficiency Level</th>
                   <th className="py-3 px-4 text-center">Score</th>
@@ -318,6 +351,11 @@ export function IndividualRecordsView({ initialSessionId }: IndividualRecordsVie
                           {r.department_code}
                         </span>
                       </td>
+                      <td className="py-3 px-4">
+                        <span className="font-semibold px-2 py-0.5 bg-cyan-50 text-cyan-800 rounded border border-cyan-200">
+                          {r.section || 'General'}
+                        </span>
+                      </td>
                       <td className="py-3 px-4 font-semibold text-slate-900">{r.skill_name}</td>
                       <td className="py-3 px-4">
                         <span
@@ -327,7 +365,7 @@ export function IndividualRecordsView({ initialSessionId }: IndividualRecordsVie
                         </span>
                       </td>
                       <td className="py-3 px-4 text-center font-mono font-bold text-slate-700">
-                        {r.numeric_proficiency.toFixed(1)}
+                        {r.raw_score != null ? `${r.raw_score}%` : r.numeric_proficiency.toFixed(1)}
                       </td>
                       <td className="py-3 px-4 text-slate-500 font-mono text-[11px]">
                         {r.submitted_at ? new Date(r.submitted_at).toLocaleString() : 'N/A'}

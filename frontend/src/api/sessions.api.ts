@@ -34,9 +34,11 @@ export interface SessionStatusResponse {
 export interface IndividualAssessmentRecord {
   session_student_ref: string;
   department_code: string;
+  section?: string;
   skill_name: string;
   proficiency_level: string;
   numeric_proficiency: number;
+  raw_score?: number;
   submitted_at: string;
   source?: string;
   program_code?: string;
@@ -47,13 +49,14 @@ export interface IndividualRecordsResponse {
   session_id: string;
   total_records: number;
   total_students: number;
+  available_sections?: string[];
   records: IndividualAssessmentRecord[];
 }
 
 export const sessionsApi = {
   getIndividualRecords: async (
     sessionId: string,
-    params?: { department_code?: string; proficiency_level?: string; search?: string }
+    params?: { department_code?: string; section?: string; proficiency_level?: string; search?: string }
   ): Promise<IndividualRecordsResponse> => {
     const res = await apiClient.get<IndividualRecordsResponse>(`/sessions/${sessionId}/records`, { params });
     return res.data;

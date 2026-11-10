@@ -20,16 +20,21 @@ import {
   BookOpen,
   CheckCircle2,
   Clock,
+  UploadCloud,
 } from 'lucide-react';
 
 interface DepartmentDashboardProps {
   onNavigateToRecommendations?: () => void;
   onNavigateToBenchmarks?: () => void;
+  onNavigateToBulkUpload?: () => void;
+  onNavigateToSectionEval?: () => void;
 }
 
 export function DepartmentDashboard({
   onNavigateToRecommendations,
   onNavigateToBenchmarks,
+  onNavigateToBulkUpload,
+  onNavigateToSectionEval,
 }: DepartmentDashboardProps) {
   const { user } = useAuthStore();
   const departmentId = user?.department_id || 'DEPT-CSE';
@@ -98,7 +103,25 @@ export function DepartmentDashboard({
           </p>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {onNavigateToBulkUpload && (
+            <button
+              onClick={onNavigateToBulkUpload}
+              className="flex items-center space-x-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-sm transition"
+            >
+              <UploadCloud className="w-3.5 h-3.5" />
+              <span>Upload Section Sheet</span>
+            </button>
+          )}
+          {onNavigateToSectionEval && (
+            <button
+              onClick={onNavigateToSectionEval}
+              className="flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold transition"
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Section Study &amp; Gap Eval</span>
+            </button>
+          )}
           <div className="flex items-center space-x-2">
             <span className="text-xs font-semibold text-slate-600">Active Session:</span>
             <select

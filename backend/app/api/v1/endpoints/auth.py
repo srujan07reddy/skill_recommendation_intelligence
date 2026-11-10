@@ -6,7 +6,7 @@ from typing import Any, List
 import uuid
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, func
 from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
@@ -89,10 +89,14 @@ async def login(credentials: LoginRequest, db: AsyncSession = Depends(get_db)) -
     Authenticate user via username or email and return signed JWT token.
     API_DOCUMENTATION.md §6.2
     """
+    identifier = credentials.username.strip()
     query = (
         select(User)
         .where(
-            or_(User.username == credentials.username, User.email == credentials.username)
+            or_(
+                func.lower(User.username) == identifier.lower(),
+                func.lower(User.email) == identifier.lower(),
+            )
         )
     )
     result = await db.execute(query)

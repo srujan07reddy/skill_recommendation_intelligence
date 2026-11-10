@@ -17,6 +17,8 @@ import {
   Send,
   ToggleLeft,
   ToggleRight,
+  ExternalLink,
+  Map,
 } from 'lucide-react';
 
 interface RecommendationsViewProps {
@@ -359,6 +361,63 @@ export function RecommendationsView({ sessionId }: RecommendationsViewProps) {
                         </li>
                       ))}
                     </ul>
+                  </div>
+                )}
+
+                {/* roadmap.sh Guided Study Path Integration */}
+                {rec.roadmap_sh && (
+                  <div className="p-3.5 bg-indigo-50/60 border border-indigo-200 rounded-xl space-y-2.5 text-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center space-x-2">
+                        <Map className="w-4 h-4 text-indigo-600" />
+                        <span className="font-bold text-indigo-950">
+                          roadmap.sh Path: {rec.roadmap_sh.title}
+                        </span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-100 text-indigo-800">
+                          {rec.roadmap_sh.role_track} &bull; {rec.roadmap_sh.target_tier}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <a
+                          href={rec.roadmap_sh.roadmap_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center space-x-1 px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[11px] font-semibold shadow-xs transition"
+                        >
+                          <span>Open {rec.skill_name} Map</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                        <a
+                          href={rec.roadmap_sh.role_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center space-x-1 px-2.5 py-1 bg-white border border-indigo-200 hover:bg-indigo-100 text-indigo-800 rounded-lg text-[11px] font-semibold transition"
+                        >
+                          <span>{rec.roadmap_sh.role_track} Path</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    </div>
+
+                    {rec.roadmap_sh.prerequisites?.length > 0 && (
+                      <p className="text-[11px] text-indigo-800">
+                        <strong>Prerequisites:</strong> {rec.roadmap_sh.prerequisites.join(' → ')}
+                      </p>
+                    )}
+
+                    {rec.roadmap_sh.milestones?.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {rec.roadmap_sh.milestones.map((topic, idx) => (
+                          <span
+                            key={idx}
+                            className="px-2 py-0.5 bg-white border border-indigo-200 rounded-md text-[11px] text-slate-700 font-medium"
+                          >
+                            {idx + 1}. {topic}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

@@ -57,8 +57,18 @@ export function ValidationResultsView({
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h3 className="text-base font-bold text-slate-900">
-              Dataset Validation Report
+            <h3 className="text-base font-bold text-slate-900 flex items-center space-x-2">
+              <span>Dataset Validation Report</span>
+              {report.format_detected && (
+                <span className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 text-[10px] font-bold uppercase">
+                  {report.format_detected} Format
+                </span>
+              )}
+              {report.sections_detected && report.sections_detected.length > 0 && (
+                <span className="px-2 py-0.5 rounded bg-cyan-100 text-cyan-800 text-[10px] font-bold">
+                  Sections: {report.sections_detected.join(', ')}
+                </span>
+              )}
             </h3>
             <p className="text-xs text-slate-500">
               File: <strong className="text-slate-800">{report.filename}</strong> • Session:{' '}
@@ -213,7 +223,7 @@ export function ValidationResultsView({
                 <tr>
                   <th className="p-2.5">Session Student Pseudonym</th>
                   <th className="p-2.5">Department</th>
-                  <th className="p-2.5">Degree Program</th>
+                  <th className="p-2.5">Section</th>
                   <th className="p-2.5">Canonical Skill Name</th>
                   <th className="p-2.5">Proficiency Level (ADR-007)</th>
                 </tr>
@@ -225,13 +235,16 @@ export function ValidationResultsView({
                       {row.session_student_ref}
                     </td>
                     <td className="p-2.5 text-slate-700">{row.department_code}</td>
-                    <td className="p-2.5 text-slate-500">{row.program_code || '—'}</td>
+                    <td className="p-2.5 text-cyan-700 font-semibold font-sans">
+                      {row.section || 'General'}
+                    </td>
                     <td className="p-2.5 text-slate-900 font-semibold font-sans">
                       {row.skill_name}
                     </td>
                     <td className="p-2.5">
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 font-sans">
                         {row.proficiency_level}
+                        {row.raw_score !== undefined && row.raw_score !== null ? ` (${row.raw_score}%)` : ''}
                       </span>
                     </td>
                   </tr>

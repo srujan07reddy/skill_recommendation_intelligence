@@ -30,6 +30,8 @@ export interface DepartmentSkillAnalytics {
   department_id: string;
   department_code: string;
   department_name: string;
+  section?: string | null;
+  available_sections?: string[];
   total_eligible_students: number;
   participating_students: number;
   participation_rate: number;
@@ -80,6 +82,8 @@ export interface DepartmentGapReport {
   department_id: string;
   department_code: string;
   department_name: string;
+  section?: string | null;
+  available_sections?: string[];
   benchmarks_evaluated: number;
   approved_benchmarks_count: number;
   draft_benchmarks_count: number;
@@ -87,6 +91,59 @@ export interface DepartmentGapReport {
   moderate_gaps_count: number;
   satisfied_count: number;
   gaps: SkillGapItem[];
+}
+
+export interface StudentSkillHave {
+  skill_id: string;
+  skill_name: string;
+  proficiency_level: string;
+  numeric_proficiency: number;
+  raw_score?: number | null;
+}
+
+export interface StudentSkillGapItem {
+  skill_name: string;
+  relevance_type: string;
+  target_proficiency: number;
+  current_proficiency: number;
+  gap_delta: number;
+  status: 'MISSING' | 'BELOW_TARGET' | 'MEETS_TARGET' | string;
+}
+
+export interface StudentStudyItem {
+  skill_name: string;
+  action_type: string;
+  priority: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | string;
+  study_focus: string;
+  roadmap_slug?: string | null;
+  roadmap_url?: string | null;
+  roadmap_topics?: string[];
+}
+
+export interface StudentEvaluationSummary {
+  session_student_ref: string;
+  section: string;
+  department_code: string;
+  average_proficiency: number;
+  readiness_status: 'NEEDS_CORE_STUDY' | 'DEVELOPING' | 'BENCHMARK_READY' | string;
+  skills_have: StudentSkillHave[];
+  skill_gaps: StudentSkillGapItem[];
+  what_to_study: StudentStudyItem[];
+}
+
+export interface SectionEvaluationResponse {
+  session_id: string;
+  department_id: string;
+  department_code: string;
+  department_name: string;
+  selected_section?: string | null;
+  available_sections: string[];
+  total_students: number;
+  total_records: number;
+  what_they_have: SkillDistributionItem[];
+  gap_report: DepartmentGapReport;
+  cohort_study_roadmap: Array<Record<string, any>>;
+  student_evaluations: StudentEvaluationSummary[];
 }
 
 export interface InstitutionalGapReport {
@@ -124,18 +181,43 @@ export const analysisApi = {
     return res.data;
   },
 
-  getDepartmentAnalytics: async (sessionId: string, departmentId: string): Promise<DepartmentSkillAnalytics> => {
-    const res = await apiClient.get<DepartmentSkillAnalytics>(`/analysis/${sessionId}/departments/${departmentId}`);
+  getDepartmentAnalytics: async (
+    sessionId: string,
+    departmentId: string,
+    section?: string
+  ): Promise<DepartmentSkillAnalytics> => {
+    const params = section && section !== 'ALL' ? { section } : {};
+    const res = await apiClient.get<DepartmentSkillAnalytics>(
+      `/analysis/${sessionId}/departments/${departmentId}`,
+      { params }
+    );
+    return res.data;
+  },
+
+  getSectionEvaluation: async (
+    sessionId: string,
+    departmentId: string,
+    section?: string,
+    includeDraft: boolean = true
+  ): Promise<SectionEvaluationResponse> => {
+    const params: Record<string, any> = { include_draft: includeDraft };
+    if (section && section !== 'ALL') params.section = section;
+    const res = await apiClient.get<SectionEvaluationResponse>(
+      `/analysis/${sessionId}/departments/${departmentId}/section-evaluation`,
+      { params }
+    );
     return res.data;
   },
 
   getDepartmentGaps: async (
     sessionId: string,
     departmentId?: string,
-    includeDraft: boolean = false
+    includeDraft: boolean = false,
+    section?: string
   ): Promise<DepartmentGapReport> => {
     const params: Record<string, any> = { include_draft: includeDraft };
     if (departmentId) params.department_id = departmentId;
+    if (section && section !== 'ALL') params.section = section;
     const res = await apiClient.get<DepartmentGapReport>(`/analysis/${sessionId}/gaps`, { params });
     return res.data;
   },

@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   Building,
   Users,
+  Map,
 } from 'lucide-react';
 import { useAuthStore } from '../../features/auth/useAuthStore';
 
@@ -68,6 +69,34 @@ export function Sidebar({ currentTab, onSelectTab }: SidebarProps) {
               </button>
             )}
 
+            {isHOD && (
+              <button
+                onClick={() => onSelectTab('bulk-upload')}
+                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-semibold transition ${
+                  currentTab === 'bulk-upload'
+                    ? 'bg-indigo-50 text-indigo-700'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                }`}
+              >
+                <UploadCloud className="w-4 h-4 text-indigo-600" />
+                <span>Section Bulk Upload</span>
+              </button>
+            )}
+
+            {(isHOD || isDean || isAdmin) && (
+              <button
+                onClick={() => onSelectTab('section-eval')}
+                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-semibold transition ${
+                  currentTab === 'section-eval'
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                }`}
+              >
+                <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                <span>Section Eval &amp; Study Plan</span>
+              </button>
+            )}
+
             {(isDean || isHOD) && (
               <button
                 onClick={() => onSelectTab('ingestion')}
@@ -77,8 +106,8 @@ export function Sidebar({ currentTab, onSelectTab }: SidebarProps) {
                     : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                 }`}
               >
-                <UploadCloud className="w-4 h-4 text-indigo-600" />
-                <span>Sessions & Ingestion</span>
+                <Layers className="w-4 h-4 text-indigo-500" />
+                <span>Assessment Sessions</span>
               </button>
             )}
 
@@ -91,19 +120,7 @@ export function Sidebar({ currentTab, onSelectTab }: SidebarProps) {
               }`}
             >
               <Layers className="w-4 h-4 text-purple-600" />
-              <span>Skill Analytics & Gaps</span>
-            </button>
-
-            <button
-              onClick={() => onSelectTab('student-form')}
-              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-semibold transition ${
-                currentTab === 'student-form'
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-              }`}
-            >
-              <FileCheck2 className="w-4 h-4 text-emerald-600" />
-              <span>Student Assessment Form</span>
+              <span>Skill Analytics &amp; Gaps</span>
             </button>
 
             {(isDean || isAdmin) && (
@@ -130,6 +147,18 @@ export function Sidebar({ currentTab, onSelectTab }: SidebarProps) {
             >
               <Compass className="w-4 h-4 text-amber-600" />
               <span>Development Events</span>
+            </button>
+
+            <button
+              onClick={() => onSelectTab('roadmaps')}
+              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-semibold transition ${
+                currentTab === 'roadmaps'
+                  ? 'bg-indigo-50 text-indigo-700'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <Map className="w-4 h-4 text-indigo-600" />
+              <span>Roadmaps (roadmap.sh)</span>
             </button>
           </nav>
         </div>
@@ -196,7 +225,7 @@ export function Sidebar({ currentTab, onSelectTab }: SidebarProps) {
                 }`}
               >
                 <Building className="w-4 h-4 text-slate-600" />
-                <span>{isAdmin ? 'Jeppiaar Schools (All)' : `${user?.school_name || 'School'} Departments`}</span>
+                <span>{isAdmin ? 'Schools, Depts & Deans' : 'Departments & HOD Logins'}</span>
               </button>
 
               <button

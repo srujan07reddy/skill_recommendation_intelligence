@@ -25,8 +25,8 @@ export function FileUploadView({ session, onValidationComplete, onBack }: FileUp
   const validateAndSetFile = (file: File) => {
     setErrorMessage(null);
     const ext = file.name.split('.').pop()?.toLowerCase();
-    if (ext !== 'xlsx' && ext !== 'csv') {
-      setErrorMessage('Unsupported file format. Please upload an Excel (.xlsx) or CSV (.csv) file.');
+    if (ext !== 'xlsx' && ext !== 'xls' && ext !== 'csv') {
+      setErrorMessage('Unsupported file format. Please upload an Excel (.xlsx, .xls) or CSV (.csv) file.');
       return;
     }
 
@@ -132,7 +132,7 @@ export function FileUploadView({ session, onValidationComplete, onBack }: FileUp
         <input
           ref={fileInputRef}
           type="file"
-          accept=".xlsx,.csv"
+          accept=".xlsx,.xls,.csv"
           onChange={handleFileChange}
           className="hidden"
         />

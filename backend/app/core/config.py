@@ -47,7 +47,7 @@ class Settings(BaseSettings):
 
     # Ingestion & Uploads
     MAX_UPLOAD_SIZE_MB: int = 25
-    ALLOWED_UPLOAD_EXTENSIONS: str = "xlsx,csv"
+    ALLOWED_UPLOAD_EXTENSIONS: str = "xlsx,xls,csv"
 
     # CORS
     CORS_ORIGINS: Union[str, List[str]] = "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173"

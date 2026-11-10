@@ -312,8 +312,9 @@ async def purge_session(
 async def get_individual_assessment_records(
     session_id: str,
     department_code: Optional[str] = Query(None, description="Filter by department code"),
+    section: Optional[str] = Query(None, description="Filter by student section (e.g. Section A)"),
     proficiency_level: Optional[str] = Query(None, description="Filter by proficiency (Beginner, Intermediate, Expert)"),
-    search: Optional[str] = Query(None, description="Search by student pseudonym or skill name"),
+    search: Optional[str] = Query(None, description="Search by student pseudonym, skill name, or section"),
     current_token: Dict[str, Any] = Depends(require_roles(["Dean", "Administrator", "HOD", "Faculty"])),
     session_store: AbstractSessionStore = Depends(get_session_store),
     db: AsyncSession = Depends(get_db)
@@ -350,13 +351,26 @@ async def get_individual_assessment_records(
 
     # Filter by allowed departments
     if allowed_dept_codes is not None:
-        records = [r for r in all_records if r.get("department_code") in allowed_dept_codes]
+        scoped_records = [r for r in all_records if r.get("department_code") in allowed_dept_codes]
     else:
-        records = all_records
+        scoped_records = all_records
+
+    available_sections = sorted({
+        str(r.get("section")).strip()
+        for r in scoped_records
+        if r.get("section") and str(r.get("section")).strip()
+    })
+
+    records = scoped_records
 
     # Filter by department_code parameter
     if department_code:
         records = [r for r in records if r.get("department_code", "").upper() == department_code.upper()]
+
+    # Filter by section parameter
+    if section and section.upper() != "ALL":
+        target_sec = section.strip().lower()
+        records = [r for r in records if str(r.get("section") or "General").strip().lower() == target_sec]
 
     # Filter by proficiency_level parameter
     if proficiency_level:
@@ -370,6 +384,7 @@ async def get_individual_assessment_records(
             if s in r.get("session_student_ref", "").lower()
             or s in r.get("skill_name", "").lower()
             or s in r.get("department_code", "").lower()
+            or s in str(r.get("section", "")).lower()
         ]
 
     unique_students = len({r.get("session_student_ref") for r in records if r.get("session_student_ref")})
@@ -378,6 +393,7 @@ async def get_individual_assessment_records(
         "session_id": session_id,
         "total_records": len(records),
         "total_students": unique_students,
+        "available_sections": available_sections,
         "records": records
     }
 

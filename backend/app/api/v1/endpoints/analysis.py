@@ -21,12 +21,41 @@ from app.schemas.analysis import (
     InstitutionalSkillAnalytics,
     DepartmentGapReport,
     InstitutionalGapReport,
+    SectionEvaluationResponse,
 )
 from app.modules.analysis.analysis_engine import SkillAnalysisEngine
 from app.modules.analysis.gap_engine import SkillGapEngine
 from app.modules.analysis.benchmark_service import BenchmarkService
+from app.modules.recommendations.recommendation_engine import RecommendationEngine
 
 router = APIRouter(prefix="/analysis", tags=["Skill Analysis & Gaps"])
+
+
+async def _resolve_and_authorize_department(
+    department_id: str,
+    current_token: Dict[str, Any],
+    db: AsyncSession,
+) -> Department:
+    """Resolve department by UUID or code and enforce HOD department scope."""
+    dept = None
+    try:
+        dept_uuid = uuid.UUID(department_id)
+        res = await db.execute(select(Department).where(Department.department_id == dept_uuid))
+        dept = res.scalar_one_or_none()
+    except (ValueError, TypeError):
+        res = await db.execute(select(Department).where(Department.department_code == department_id))
+        dept = res.scalar_one_or_none()
+
+    if not dept:
+        raise NotFoundException(f"Department '{department_id}' not found.")
+
+    user_roles = [r.lower() for r in current_token.get("roles", [])]
+    user_dept_id = current_token.get("department_id")
+    if "hod" in user_roles and "dean" not in user_roles and "administrator" not in user_roles:
+        if not user_dept_id or str(user_dept_id) != str(dept.department_id):
+            raise ForbiddenException("Access denied. HOD role is restricted to assigned department.")
+
+    return dept
 
 
 async def _load_taxonomy_details(db: AsyncSession) -> Dict[str, Dict[str, str]]:
@@ -124,38 +153,20 @@ async def get_institutional_distribution(
 async def get_department_analytics(
     session_id: str,
     department_id: str,
+    section: Optional[str] = Query(None, description="Optional section filter (e.g. Section A)"),
     current_token: Dict[str, Any] = Depends(require_roles(["Dean", "Administrator", "HOD", "Faculty", "IQAC"])),
     session_store: AbstractSessionStore = Depends(get_session_store),
     db: AsyncSession = Depends(get_db)
 ):
     """
     Retrieve department-specific skill intelligence and 3-tier proficiency distributions.
-    Enforces HOD department scoping rules.
+    Supports section-wise filtering and enforces HOD department scoping rules.
     """
     session = await session_store.get_session(session_id)
     if not session:
         raise NotFoundException(f"Assessment session '{session_id}' not found or expired.")
 
-    # Resolve department from database
-    dept = None
-    try:
-        dept_uuid = uuid.UUID(department_id)
-        res = await db.execute(select(Department).where(Department.department_id == dept_uuid))
-        dept = res.scalar_one_or_none()
-    except (ValueError, TypeError):
-        res = await db.execute(select(Department).where(Department.department_code == department_id))
-        dept = res.scalar_one_or_none()
-
-    if not dept:
-        raise NotFoundException(f"Department '{department_id}' not found.")
-
-    # RBAC department scope check for HOD
-    user_roles = [r.lower() for r in current_token.get("roles", [])]
-    user_dept_id = current_token.get("department_id")
-    if "hod" in user_roles and "dean" not in user_roles and "administrator" not in user_roles:
-        if not user_dept_id or str(user_dept_id) != str(dept.department_id):
-            raise ForbiddenException("Access denied. HOD role is restricted to assigned department.")
-
+    dept = await _resolve_and_authorize_department(department_id, current_token, db)
     records = await session_store.get_assessment_records(session_id)
     taxonomy_details = await _load_taxonomy_details(db)
 
@@ -166,7 +177,81 @@ async def get_department_analytics(
         department_name=dept.department_name,
         records=records,
         total_eligible_students=250, # Standard cohort baseline
-        taxonomy_details=taxonomy_details
+        taxonomy_details=taxonomy_details,
+        section=section,
+    )
+
+
+@router.get("/{session_id}/departments/{department_id}/section-evaluation", response_model=SectionEvaluationResponse)
+async def get_section_evaluation(
+    session_id: str,
+    department_id: str,
+    section: Optional[str] = Query(None, description="Filter evaluation by student section"),
+    include_draft: bool = Query(True, description="Include DRAFT benchmarks for gap evaluation"),
+    current_token: Dict[str, Any] = Depends(require_roles(["Dean", "Administrator", "HOD", "Faculty"])),
+    session_store: AbstractSessionStore = Depends(get_session_store),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Section-wise comprehensive evaluation showing:
+    1. What students currently have (observed proficiency & coverage)
+    2. Curriculum gaps against department benchmarks
+    3. What they need to study (both cohort training roadmap & student-by-student study plans)
+    """
+    session = await session_store.get_session(session_id)
+    if not session:
+        raise NotFoundException(f"Assessment session '{session_id}' not found or expired.")
+
+    dept = await _resolve_and_authorize_department(department_id, current_token, db)
+    records = await session_store.get_assessment_records(session_id)
+    taxonomy_details = await _load_taxonomy_details(db)
+
+    dept_analytics = SkillAnalysisEngine.analyze_department_skills(
+        session_id=session_id,
+        department_id=str(dept.department_id),
+        department_code=dept.department_code,
+        department_name=dept.department_name,
+        records=records,
+        total_eligible_students=250,
+        taxonomy_details=taxonomy_details,
+        section=section,
+    )
+
+    benchmarks = await BenchmarkService.list_benchmarks(db, department_id=str(dept.department_id))
+    gap_report = SkillGapEngine.evaluate_department_gaps(
+        session_id=session_id,
+        department_id=str(dept.department_id),
+        department_code=dept.department_code,
+        department_name=dept.department_name,
+        benchmarks=benchmarks,
+        department_analytics=dept_analytics,
+        include_draft=include_draft,
+    )
+
+    cohort_recs = RecommendationEngine.generate_for_department(session_id, gap_report)
+    student_evals = SkillGapEngine.evaluate_students(
+        department_code=dept.department_code,
+        records=records,
+        benchmarks=benchmarks,
+        include_draft=include_draft,
+        section=section,
+    )
+
+    total_recs_in_scope = sum(len(s.skills_have) for s in student_evals)
+
+    return SectionEvaluationResponse(
+        session_id=session_id,
+        department_id=str(dept.department_id),
+        department_code=dept.department_code,
+        department_name=dept.department_name,
+        selected_section=dept_analytics.section,
+        available_sections=dept_analytics.available_sections,
+        total_students=len(student_evals),
+        total_records=total_recs_in_scope,
+        what_they_have=dept_analytics.skills,
+        gap_report=gap_report,
+        cohort_study_roadmap=[r.model_dump() for r in cohort_recs],
+        student_evaluations=student_evals,
     )
 
 
@@ -174,6 +259,7 @@ async def get_department_analytics(
 async def get_skill_gaps(
     session_id: str,
     department_id: Optional[str] = Query(None, description="Department UUID or code"),
+    section: Optional[str] = Query(None, description="Optional section filter"),
     include_draft: bool = Query(False, description="ADR-008: Include unapproved DRAFT benchmarks for simulation"),
     current_token: Dict[str, Any] = Depends(require_roles(["Dean", "Administrator", "HOD", "Faculty", "IQAC"])),
     session_store: AbstractSessionStore = Depends(get_session_store),
@@ -201,18 +287,7 @@ async def get_skill_gaps(
     taxonomy_details = await _load_taxonomy_details(db)
 
     if target_dept_id:
-        # Resolve single department
-        dept = None
-        try:
-            d_uuid = uuid.UUID(target_dept_id)
-            res = await db.execute(select(Department).where(Department.department_id == d_uuid))
-            dept = res.scalar_one_or_none()
-        except (ValueError, TypeError):
-            res = await db.execute(select(Department).where(Department.department_code == target_dept_id))
-            dept = res.scalar_one_or_none()
-
-        if not dept:
-            raise NotFoundException(f"Department '{target_dept_id}' not found.")
+        dept = await _resolve_and_authorize_department(target_dept_id, current_token, db)
 
         dept_analytics = SkillAnalysisEngine.analyze_department_skills(
             session_id=session_id,
@@ -221,7 +296,8 @@ async def get_skill_gaps(
             department_name=dept.department_name,
             records=records,
             total_eligible_students=250,
-            taxonomy_details=taxonomy_details
+            taxonomy_details=taxonomy_details,
+            section=section,
         )
 
         benchmarks = await BenchmarkService.list_benchmarks(db, department_id=str(dept.department_id))
